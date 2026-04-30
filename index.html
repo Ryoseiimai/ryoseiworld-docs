@@ -202,6 +202,22 @@
     color: var(--code-text);
   }
 
+  pre code a {
+    color: #7dd3fc;
+    text-decoration: underline;
+  }
+
+  pre code a:hover {
+    color: #38bdf8;
+  }
+
+  a[target="_blank"]::after {
+    content: " ↗";
+    font-size: 0.75em;
+    color: var(--muted);
+    vertical-align: super;
+  }
+
   /* バッジ */
   .badge {
     display: inline-block;
@@ -366,7 +382,7 @@
 
 <h4>インストール手順（推奨：プラグイン経由）</h4>
 <p>Claude Code を起動した状態で、以下を順番に打つ：</p>
-<pre><code>/plugin marketplace add https://github.com/affaan-m/everything-claude-code
+<pre><code>/plugin marketplace add <a href="https://github.com/affaan-m/everything-claude-code" target="_blank">https://github.com/affaan-m/everything-claude-code</a>
 /plugin install everything-claude-code@everything-claude-code</code></pre>
 <p>これだけ。<strong>2分で終わる</strong>。</p>
 
@@ -695,5 +711,42 @@ TikTok / YouTube Shorts の動画を編集する人。テンポ命。
 
 </main>
 </div>
+
+<script>
+  // URLっぽいテキストを自動でリンク化（既に<a>でラップされてるものはスキップ）
+  (function autolinkURLs() {
+    const urlPattern = /https?:\/\/[^\s<>"']+[^\s<>"',.\)）。、]/g;
+    const skipTags = new Set(['A', 'SCRIPT', 'STYLE', 'TEXTAREA']);
+
+    function walk(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if (!urlPattern.test(node.nodeValue)) return;
+        urlPattern.lastIndex = 0;
+        const frag = document.createDocumentFragment();
+        let lastIndex = 0;
+        let match;
+        while ((match = urlPattern.exec(node.nodeValue)) !== null) {
+          if (match.index > lastIndex) {
+            frag.appendChild(document.createTextNode(node.nodeValue.slice(lastIndex, match.index)));
+          }
+          const a = document.createElement('a');
+          a.href = match[0];
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = match[0];
+          frag.appendChild(a);
+          lastIndex = urlPattern.lastIndex;
+        }
+        if (lastIndex < node.nodeValue.length) {
+          frag.appendChild(document.createTextNode(node.nodeValue.slice(lastIndex)));
+        }
+        node.parentNode.replaceChild(frag, node);
+      } else if (node.nodeType === Node.ELEMENT_NODE && !skipTags.has(node.tagName)) {
+        Array.from(node.childNodes).forEach(walk);
+      }
+    }
+    walk(document.body);
+  })();
+</script>
 </body>
 </html>

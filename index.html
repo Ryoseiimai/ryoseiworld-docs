@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="googlebot" content="noindex, nofollow">
+<title>サブエージェントの作り方 — RYOSEIWORLD</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #c8a951;
+    --accent-soft: #f4ead0;
+    --border: #e5e2d8;
+    --code-bg: #1e1e1e;
+    --code-text: #e0e0e0;
+    --good: #2d7a4f;
+    --warn: #c0392b;
+    --info: #2c5e8f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+  }
+
+  /* サイドバー（目次） */
+  aside {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 32px 24px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  aside .brand {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  aside h2 {
+    font-size: 18px;
+    margin: 0 0 24px;
+    line-height: 1.4;
+  }
+
+  aside nav {
+    font-size: 14px;
+  }
+
+  aside nav a {
+    display: block;
+    padding: 8px 12px;
+    margin: 2px 0;
+    color: var(--muted);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+
+  aside nav a:hover {
+    background: var(--accent-soft);
+    color: var(--text);
+    border-left-color: var(--accent);
+  }
+
+  aside nav .indent {
+    padding-left: 24px;
+    font-size: 13px;
+  }
+
+  aside .meta {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* メインコンテンツ */
+  main {
+    padding: 56px 64px;
+    max-width: 920px;
+  }
+
+  h1 {
+    font-size: 36px;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 16px;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  h2 {
+    font-size: 26px;
+    margin: 64px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 24px;
+  }
+
+  h3 {
+    font-size: 20px;
+    margin: 36px 0 12px;
+    color: var(--text);
+    scroll-margin-top: 24px;
+  }
+
+  h4 {
+    font-size: 16px;
+    margin: 24px 0 8px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  p { margin: 12px 0; }
+
+  ul, ol { padding-left: 24px; }
+  li { margin: 6px 0; }
+
+  /* テーブル */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  th {
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fdfcf8; }
+
+  /* コードブロック */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 20px 24px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: "SF Mono", "Consolas", "Monaco", monospace;
+    margin: 16px 0;
+  }
+
+  code {
+    font-family: "SF Mono", "Consolas", "Monaco", monospace;
+    font-size: 0.9em;
+    background: #f0ede5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #8b5a00;
+  }
+
+  pre code {
+    background: transparent;
+    padding: 0;
+    color: var(--code-text);
+  }
+
+  /* バッジ */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+
+  .badge-good { background: #e0f2e9; color: var(--good); }
+  .badge-warn { background: #fce4e0; color: var(--warn); }
+  .badge-info { background: #e0ecf6; color: var(--info); }
+
+  /* カード（注意・コツ等） */
+  .callout {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.good { border-left-color: var(--good); }
+  .callout.info { border-left-color: var(--info); }
+
+  .callout strong { display: block; margin-bottom: 6px; font-size: 14px; }
+
+  /* ステップ */
+  .steps {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+  }
+
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 16px 16px 16px 60px;
+    margin: 12px 0;
+    background: var(--surface);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  /* リンク */
+  a { color: var(--info); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* レスポンシブ */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; height: auto; }
+    main { padding: 32px 20px; }
+    h1 { font-size: 28px; }
+  }
+
+  /* 印刷 */
+  @media print {
+    aside { display: none; }
+    .layout { grid-template-columns: 1fr; }
+    main { padding: 20px; max-width: 100%; }
+    pre { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside>
+  <div class="brand">RYOSEIWORLD</div>
+  <h2>サブエージェントの作り方</h2>
+  <nav>
+    <a href="#intro">はじめに</a>
+    <a href="#two-systems">2つの仕組み</a>
+    <a href="#system1" class="indent">仕組み① 標準サブエージェント</a>
+    <a href="#system2" class="indent">仕組み② RYOSEIWORLDメンバー</a>
+    <a href="#install-ecc">ECCを入れる方法</a>
+    <a href="#diy-agent">自分で1個書く方法</a>
+    <a href="#add-member">メンバー追加手順</a>
+    <a href="#roster">既存メンバー一覧</a>
+    <a href="#tips">チーム組成のコツ</a>
+    <a href="#troubleshooting">トラブルシューティング</a>
+    <a href="#references">参考リンク</a>
+  </nav>
+  <div class="meta">
+    最終更新: 2026-04-30<br>
+    保存場所: AI_Organization/会社知識/<br>
+    形式: HTML（印刷OK）
+  </div>
+</aside>
+
+<main>
+
+<h1>サブエージェントの作り方</h1>
+<p class="subtitle">Claude Code でチームを組織するための完全ガイド — 知り合いに「どうやって組織作ったの？」と聞かれたとき、これ1本で説明できる</p>
+
+<section id="intro">
+<h2>このドキュメントは何？</h2>
+<p>Claude Code でサブエージェント（=専門家チーム）を組織するための完全ガイド。新メンバー追加するときも、知り合いに「どうやって組織作ったの？」と聞かれたときも、これ1本で説明できる。</p>
+</section>
+
+<section id="two-systems">
+<h2>まず最初に：2つの仕組みがある</h2>
+<p>涼晴のチームは <strong>2階層</strong> で動いている。混ざりやすいので最初に整理しておく。</p>
+
+<h3 id="system1">仕組み① Claude Code 標準サブエージェント</h3>
+<table>
+  <tr><th style="width: 25%">項目</th><th>内容</th></tr>
+  <tr><td>場所</td><td><code>~/.claude/agents/</code></td></tr>
+  <tr><td>1人あたり</td><td>MDファイル1個</td></tr>
+  <tr><td>用途</td><td>プログラミング系の専門作業（コードレビュー、計画立案、TDD等）</td></tr>
+  <tr><td>起動</td><td>Claudeが自動で呼ぶ。<code>Agent</code> ツールで明示起動も可能</td></tr>
+  <tr><td>例</td><td>planner, code-reviewer, tdd-guide, security-reviewer</td></tr>
+</table>
+
+<h3 id="system2">仕組み② RYOSEIWORLD AI組織メンバー（独自）</h3>
+<table>
+  <tr><th style="width: 25%">項目</th><th>内容</th></tr>
+  <tr><td>場所</td><td><code>~/Desktop/RYOSEIWORLD_AI_Team/AI_Organization/メンバー/</code></td></tr>
+  <tr><td>1人あたり</td><td>フォルダ1個（中に <code>profile.md</code> と <code>memory.md</code>）</td></tr>
+  <tr><td>用途</td><td>ビジネス系の仲間（営業、マーケ、CFO、審判、社長等）</td></tr>
+  <tr><td>起動</td><td><code>/ryoseiworld タスク</code> または <code>/delegate タスク</code></td></tr>
+  <tr><td>例</td><td>営業AI、マーケAI、番頭、審判AI、瀬戸さんCFO、RYOSEI社長</td></tr>
+</table>
+
+<div class="callout info">
+  <strong>使い分け</strong>
+  プログラミング作業 → 仕組み① ／ ビジネス判断・人格を持たせたいやつ → 仕組み②
+</div>
+</section>
+
+<section id="install-ecc">
+<h2>仕組み① をゼロから揃える方法</h2>
+
+<h3>結論：素のClaude Codeには1個も入ってない</h3>
+<p>インストール直後は <code>~/.claude/agents/</code> フォルダ自体が空っぽ。仕組みは動くが、エージェントは自分で用意する必要がある。</p>
+
+<h3>一気に揃える：ECC（Everything Claude Code）を入れる</h3>
+<p>ECC = Anthropic ハッカソン優勝者 <strong>Affaan Mustafa</strong> が作った Claude Code 設定セット。<strong>38個のエージェント＋156個のスキル＋Hook</strong> が一発で入る。MITライセンスで無料。</p>
+
+<p><strong>リポジトリ</strong>: <a href="https://github.com/affaan-m/everything-claude-code" target="_blank">https://github.com/affaan-m/everything-claude-code</a></p>
+
+<h4>インストール手順（推奨：プラグイン経由）</h4>
+<p>Claude Code を起動した状態で、以下を順番に打つ：</p>
+<pre><code>/plugin marketplace add https://github.com/affaan-m/everything-claude-code
+/plugin install everything-claude-code@everything-claude-code</code></pre>
+<p>これだけ。<strong>2分で終わる</strong>。</p>
+
+<h4>注意点</h4>
+<div class="callout warn">
+  <strong>2つの方法を混ぜるな</strong>
+  プラグイン経由でやったあとに <code>install.sh --profile full</code> をやると重複する。重複したら <code>/plugin uninstall</code> で一旦外してやり直す。
+</div>
+<p>涼晴がインストールしたのは v1.9.0（2026-04-04）。最新は v2.0.0-rc.1。</p>
+
+<h4>入るもの（v2.0.0-rc.1時点）</h4>
+<ul>
+  <li>エージェント38個（planner, code-reviewer, tdd-guide, security-reviewer 等）</li>
+  <li>スキル156個（<code>/note-post</code>, <code>/ig-analyze</code>, <code>/yt-analyze</code> 等もここから）</li>
+  <li>Hook（自動フォーマット、セッション保存等）</li>
+  <li>ルール集（言語別ベストプラクティス）</li>
+</ul>
+</section>
+
+<section id="diy-agent">
+<h2>仕組み① を自分で1個書く方法</h2>
+<p>ECC入れずに、欲しいエージェントだけ自分で書く方法もある。<strong>MDファイル1個、20行で済む</strong>。</p>
+
+<h3>雛形</h3>
+<p><code>~/.claude/agents/&lt;エージェント名&gt;.md</code> に以下を保存：</p>
+<pre><code>---
+name: 俺だけのレビュアー
+description: 俺の口調でコードをレビューする専門家。コード書いたあと自動で呼ばれる。
+tools: ["Read", "Grep", "Glob", "Bash"]
+model: sonnet
+---
+
+あなたはコードレビュアーです。
+
+## 役割
+- 俺（涼晴）が書いた・修正したコードをレビューする
+- 専門用語を避けて、わかりやすい言葉で指摘する
+- 致命的な問題（セキュリティ、データ消失）から先に報告する
+
+## レビュー手順
+1. `git diff` で変更内容を確認
+2. セキュリティ問題を最優先でチェック
+3. コードの読みやすさをチェック
+4. 重要度別に報告（CRITICAL > HIGH > MEDIUM > LOW）
+
+## 報告フォーマット
+- ファイル名と行番号を必ず書く
+- 何が問題か / どう直すか をセットで書く
+- 1〜2文で簡潔に</code></pre>
+
+<h3>frontmatter（先頭の <code>---</code> で囲んだ部分）の意味</h3>
+<table>
+  <tr><th>項目</th><th>説明</th><th>例</th></tr>
+  <tr><td><code>name</code></td><td>エージェントの名前。Claudeが呼ぶときに使う</td><td><code>俺だけのレビュアー</code></td></tr>
+  <tr><td><code>description</code></td><td>いつ呼ぶか。Claudeはこれを読んで自動判断する</td><td><code>コード書いたあと自動で呼ばれる</code></td></tr>
+  <tr><td><code>tools</code></td><td>このエージェントが使えるツール。配列で書く</td><td><code>["Read", "Grep", "Glob", "Bash"]</code></td></tr>
+  <tr><td><code>model</code></td><td>使うモデル。sonnet / opus / haiku から選ぶ</td><td><code>sonnet</code></td></tr>
+</table>
+
+<h3>モデルの選び方</h3>
+<table>
+  <tr><th>モデル</th><th>速度</th><th>賢さ</th><th>値段</th><th>こういうときに使う</th></tr>
+  <tr><td><code>haiku</code></td><td>速い</td><td>普通</td><td>安い</td><td>軽い作業（フォーマット、簡単な確認）</td></tr>
+  <tr><td><code>sonnet</code></td><td>普通</td><td>賢い</td><td>普通</td><td>大半の作業はこれでOK</td></tr>
+  <tr><td><code>opus</code></td><td>遅い</td><td>一番賢い</td><td>高い</td><td>重要な判断、複雑な計画立案</td></tr>
+</table>
+
+<div class="callout good">
+  <strong>保存して即使える</strong>
+  ファイル保存した瞬間から使える。Claude Code 再起動も不要。Claudeが <code>description</code> を読んで「このタスクはこのエージェントだな」と自動判断して呼ぶ。
+</div>
+</section>
+
+<section id="add-member">
+<h2>仕組み② RYOSEIWORLD メンバーを追加する方法</h2>
+<p>新しい仲間（例：「動画編集AI」）を追加したいときの手順。</p>
+
+<ol class="steps">
+  <li>
+    <strong>フォルダを作る</strong>
+    <pre><code>~/Desktop/RYOSEIWORLD_AI_Team/AI_Organization/メンバー/動画編集AI/</code></pre>
+  </li>
+  <li>
+    <strong>profile.md を書く</strong>
+    <p>人格・役割・担当タスクを書く。番頭の例を真似ると早い。</p>
+<pre><code># 動画編集AI
+
+## 役割
+TikTok / YouTube Shorts の動画を編集する人。テンポ命。
+
+## 担当タスク
+- 撮影素材から短尺動画を作る
+- BGM・効果音の選定
+- テロップの配置
+- サムネイル作成
+
+## 参照すべきファイル
+- ~/Desktop/動画素材/
+- 02_RYOSEIWORLD合同会社/プロジェクト/_一覧.md
+
+## 作業ルール
+1. 1本3秒以内にフックを作る
+2. テロップは最大2行まで
+3. 完成したら審判AIにレビュー依頼</code></pre>
+  </li>
+  <li>
+    <strong>memory.md を書く（最初は空でOK）</strong>
+<pre><code># 動画編集AI — 個人メモリ
+最終更新: 2026-04-30
+
+## 学んだこと
+（ここに作業しながら学んだことを追記していく）
+
+## 過去の成功パターン
+（ここにバズった動画の特徴を記録していく）</code></pre>
+  </li>
+  <li>
+    <strong>ワークフロー.md に登録</strong>
+    <p><code>AI_Organization/ワークフロー.md</code> を開いて、振り分けルールに追加：</p>
+<pre><code>| タスク | 担当 |
+|-------|-----|
+| 動画編集 | 動画編集AI |</code></pre>
+  </li>
+  <li>
+    <strong>CLAUDE.md の地図にも追加</strong>
+    <p><code>~/.claude/CLAUDE.md</code> の「メンバーの記憶」テーブルに1行足す：</p>
+<pre><code>| `動画編集AI/` | 動画編集・TikTok・YouTube Shorts |</code></pre>
+  </li>
+</ol>
+
+<div class="callout good">
+  <strong>これで完成</strong>
+  <code>/ryoseiworld 動画編集して</code> と言うと、自動で動画編集AIが呼ばれる。
+</div>
+</section>
+
+<section id="roster">
+<h2>既存メンバー一覧（2026-04-30時点）</h2>
+
+<h3>Claude Code 標準サブエージェント（37個、ECC経由でインストール済み）</h3>
+<p>プログラミング系の専門家。涼晴がコード書くとき自動で呼ばれる。</p>
+
+<table>
+  <tr><th style="width: 30%">カテゴリ</th><th>メンバー</th></tr>
+  <tr>
+    <td>計画・設計系</td>
+    <td><span class="badge badge-info">planner</span><span class="badge badge-info">architect</span><span class="badge badge-info">gan-planner</span></td>
+  </tr>
+  <tr>
+    <td>レビュー系</td>
+    <td>
+      <span class="badge badge-info">code-reviewer</span>
+      <span class="badge badge-info">security-reviewer</span>
+      <span class="badge badge-info">typescript-reviewer</span>
+      <span class="badge badge-info">python-reviewer</span>
+      <span class="badge badge-info">go-reviewer</span>
+      <span class="badge badge-info">rust-reviewer</span>
+      <span class="badge badge-info">java-reviewer</span>
+      <span class="badge badge-info">kotlin-reviewer</span>
+      <span class="badge badge-info">csharp-reviewer</span>
+      <span class="badge badge-info">cpp-reviewer</span>
+      <span class="badge badge-info">flutter-reviewer</span>
+      <span class="badge badge-info">healthcare-reviewer</span>
+      <span class="badge badge-info">database-reviewer</span>
+    </td>
+  </tr>
+  <tr>
+    <td>テスト・修正系</td>
+    <td>
+      <span class="badge badge-info">tdd-guide</span>
+      <span class="badge badge-info">build-error-resolver</span>
+      <span class="badge badge-info">e2e-runner</span>
+      <span class="badge badge-info">refactor-cleaner</span>
+      <span class="badge badge-info">performance-optimizer</span>
+    </td>
+  </tr>
+  <tr>
+    <td>言語別ビルドエラー解決</td>
+    <td>
+      <span class="badge badge-info">cpp-build-resolver</span>
+      <span class="badge badge-info">dart-build-resolver</span>
+      <span class="badge badge-info">go-build-resolver</span>
+      <span class="badge badge-info">java-build-resolver</span>
+      <span class="badge badge-info">kotlin-build-resolver</span>
+      <span class="badge badge-info">rust-build-resolver</span>
+      <span class="badge badge-info">pytorch-build-resolver</span>
+    </td>
+  </tr>
+  <tr>
+    <td>その他</td>
+    <td>
+      <span class="badge badge-info">chief-of-staff</span>
+      <span class="badge badge-info">doc-updater</span>
+      <span class="badge badge-info">docs-lookup</span>
+      <span class="badge badge-info">harness-optimizer</span>
+      <span class="badge badge-info">loop-operator</span>
+      <span class="badge badge-info">opensource-forker</span>
+      <span class="badge badge-info">opensource-packager</span>
+      <span class="badge badge-info">opensource-sanitizer</span>
+      <span class="badge badge-info">gan-evaluator</span>
+      <span class="badge badge-info">gan-generator</span>
+    </td>
+  </tr>
+</table>
+
+<h3>RYOSEIWORLD AI組織メンバー（17人）</h3>
+<p>ビジネス系の仲間。<code>/ryoseiworld</code> で呼び出す。</p>
+
+<table>
+  <tr><th style="width: 30%">カテゴリ</th><th>メンバー</th></tr>
+  <tr>
+    <td>経営層</td>
+    <td>
+      <span class="badge badge-good">RYOSEI_社長</span>
+      <span class="badge badge-good">瀬戸さん_CFO</span>
+      <span class="badge badge-good">番頭</span>
+    </td>
+  </tr>
+  <tr>
+    <td>営業・マーケ</td>
+    <td>
+      <span class="badge badge-good">営業AI</span>
+      <span class="badge badge-good">マーケAI</span>
+      <span class="badge badge-good">はるか_執筆AI</span>
+    </td>
+  </tr>
+  <tr>
+    <td>エンジニア</td>
+    <td>
+      <span class="badge badge-good">あきら_エンジニア</span>
+      <span class="badge badge-good">ひろゆき_エンジニア</span>
+      <span class="badge badge-good">ゆうき_フロントエンドエンジニア</span>
+      <span class="badge badge-good">まさと_データエンジニア</span>
+      <span class="badge badge-good">たくや_インフラエンジニア</span>
+      <span class="badge badge-good">エンジニア</span>
+    </td>
+  </tr>
+  <tr>
+    <td>専門職</td>
+    <td>
+      <span class="badge badge-good">UIUXデザイナー</span>
+      <span class="badge badge-good">法務AI</span>
+      <span class="badge badge-good">審判AI</span>
+      <span class="badge badge-good">園田_人材担当</span>
+    </td>
+  </tr>
+  <tr>
+    <td>特殊</td>
+    <td>
+      <span class="badge badge-good">スーパーゴールドクロちゃん</span>
+      <span class="badge badge-good">涼晴AI</span>
+    </td>
+  </tr>
+</table>
+</section>
+
+<section id="tips">
+<h2>チーム組成のコツ（涼晴の経験から）</h2>
+
+<h3>やった方がいいこと</h3>
+<div class="callout good">
+  <strong>① 役割は1人1つに絞る</strong>
+  営業AIに「マーケもやって」と言うと曖昧になる。1人1機能。
+</div>
+<div class="callout good">
+  <strong>② memory.md を必ず作る</strong>
+  学習が蓄積されるから、使えば使うほど賢くなる。
+</div>
+<div class="callout good">
+  <strong>③ 審判AIを必ず通す</strong>
+  外部向けの成果物は、必ず審判AIにレビューさせる。これを飛ばすと事故る（2026/3/17に失敗してる）。
+</div>
+<div class="callout good">
+  <strong>④ 新メンバーは月1ペースで増やす</strong>
+  一気に増やすと管理できない。必要になったら1人ずつ。
+</div>
+
+<h3>やっちゃダメなこと</h3>
+<div class="callout warn">
+  <strong>① 同じ役割のメンバーを複数作る</strong>
+  「営業AI1号」「営業AI2号」みたいに分けると、どっちを呼ぶか毎回迷う。
+</div>
+<div class="callout warn">
+  <strong>② profile.md を放置する</strong>
+  役割が古くなったら更新する。古いまま使うとズレた成果物が出る。
+</div>
+<div class="callout warn">
+  <strong>③ ECCインストールを2回やる</strong>
+  重複してエージェントが二重登録されることがある。
+</div>
+</section>
+
+<section id="troubleshooting">
+<h2>トラブルシューティング</h2>
+
+<table>
+  <tr><th style="width: 35%">困ったこと</th><th>対処法</th></tr>
+  <tr>
+    <td>エージェントが呼ばれない</td>
+    <td><code>description</code> が曖昧だと Claude が自動判断できない。「いつ使うか」を具体的に書く。</td>
+  </tr>
+  <tr>
+    <td>ECCのインストールが失敗した</td>
+    <td><code>/plugin uninstall everything-claude-code</code> で一旦外して、再度 <code>/plugin install</code> を試す。それでもダメなら <a href="https://github.com/affaan-m/everything-claude-code/issues" target="_blank">GitHub Issues</a> を確認。</td>
+  </tr>
+  <tr>
+    <td>メンバーを削除したい</td>
+    <td>フォルダごと削除でOK。ただし <code>ワークフロー.md</code> と <code>CLAUDE.md</code> の記述も合わせて消す。</td>
+  </tr>
+  <tr>
+    <td>別のPCに同じ環境を作りたい</td>
+    <td>ECC は再インストール。RYOSEIWORLDメンバーは <code>AI_Organization/</code> フォルダごとコピー。</td>
+  </tr>
+</table>
+</section>
+
+<section id="references">
+<h2>参考リンク</h2>
+<ul>
+  <li>ECC リポジトリ: <a href="https://github.com/affaan-m/everything-claude-code" target="_blank">github.com/affaan-m/everything-claude-code</a></li>
+  <li>ECC 作者: Affaan Mustafa（Anthropic ハッカソン優勝者）</li>
+  <li>Claude Code 公式: <a href="https://docs.claude.com/claude-code" target="_blank">docs.claude.com/claude-code</a></li>
+  <li>ライセンス: MIT（商用利用OK、改変OK、再配布OK）</li>
+</ul>
+</section>
+
+</main>
+</div>
+</body>
+</html>
